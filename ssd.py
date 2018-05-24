@@ -18,7 +18,7 @@ from mxnet.contrib.ndarray import MultiBoxDetection
 print("all module imported")
 
 NUM_CLASS = 43
-BATCH_SIZE = 16
+BATCH_SIZE = 15
 DATA_SHAPE = 256
 
 train_data = mx.image.ImageIter(
@@ -130,7 +130,7 @@ class ToySSD(gluon.Block):
     def __init__(self, num_classes, **kwargs):
         super(ToySSD, self).__init__(**kwargs)
         # anchor box sizes for 4 feature scales
-        self.anchor_sizes = [[.1, .172], [.27, .347], [.44, .519], [.61, .69], [.78, .861]]
+        self.anchor_sizes = [[.1, .11], [.12, .15], [.18, .2], [.22, .25], [.27, .3]]
         # anchor box ratios for 4 feature scales
         self.anchor_ratios = [[1, 2, .5]] * 5
         self.num_classes = num_classes
@@ -196,7 +196,7 @@ trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': 0.1, 'wd'
 
 log_interval = 20
 start_epoch = 0
-epochs = 30
+epochs = 20
 
 print("start train")
 for epoch in range(start_epoch, epochs):
