@@ -13,44 +13,50 @@ from mxnet import gpu
 from mxnet.gluon import nn
 from mxnet.gluon import Block, HybridBlock
 from mxnet.gluon.model_zoo import vision
-
+from mxnet import metric
 print("all module load")
 
 NUM_CLASS = 43
 BATCH_SIZE = 16
 DATA_SHAPE = 256
 
-train_data = mx.image.ImageIter(
-   batch_size=BATCH_SIZE, label_width = 1,
-   data_shape=(3, DATA_SHAPE, DATA_SHAPE), 
-   path_imgrec='./dataset/dataset.rec',  
-   path_imgidx='./dataset/dataset.idx',  #help shuffle performance
-   shuffle=True)
+def load_data():
+    train_data = mx.image.ImageIter(
+       batch_size=BATCH_SIZE, label_width = 1,
+       data_shape=(3, DATA_SHAPE, DATA_SHAPE), 
+       path_imgrec='./dataset/dataset.rec',  
+       path_imgidx='./dataset/dataset.idx',  #help shuffle performance
+       shuffle=True)
 
-test_data = mx.image.ImageIter(  
-   batch_size=BATCH_SIZE, label_width = 1,
-   data_shape=(3, DATA_SHAPE, DATA_SHAPE),  
-   path_imgrec='./dataset/dataset.rec',  
-   path_imgidx='./dataset/dataset.idx',  #help shuffle performance
-   shuffle=True)
+    test_data = mx.image.ImageIter(  
+       batch_size=BATCH_SIZE, label_width = 1,
+       data_shape=(3, DATA_SHAPE, DATA_SHAPE),  
+       path_imgrec='./dataset/dataset.rec',  
+       path_imgidx='./dataset/dataset.idx',  #help shuffle performance
+       shuffle=True)
+    return train_data, test_data
 
-paths = glob.glob("dataset/scene-jpg/*.jpg")
-labels = nd.zeros((len(paths), NUM_CLASS+1, 5)) -1.
-gts = open("dataset/gt1.txt",'r').read().split('\n')[:-1]
-for gt in gts:
-    line = gt.split(";")
-    idx = int(line[0].split(".")[0])
-    minx = float(line[1])
-    miny = float(line[2])
-    maxx = float(line[3])
-    maxy = float(line[4])
-    label = float(line[5])
-    labels[idx][int(label)] = [label, minx, miny, maxx, maxy]
+def load_label():
+    paths = glob.glob("dataset/scene-jpg/*.jpg")
+    labels = nd.zeros((len(paths), NUM_CLASS+1, 5)) -1.
+    gts = open("dataset/gt1.txt",'r').read().split('\n')[:-1]
+    for gt in gts:
+        line = gt.split(";")
+        idx = int(line[0].split(".")[0])
+        minx = float(line[1])
+        miny = float(line[2])
+        maxx = float(line[3])
+        maxy = float(line[4])
+        label = float(line[5])
+        labels[idx][int(label)] = [label, minx, miny, maxx, maxy]
+    return labels
 
-signname_file = "dataset/signnames.csv"
-with open(signname_file) as f:
-    f.readline() # skip the headers
-    signnames = [row[1] for row in csv.reader(f)]
+def load_signname():
+    signname_file = "dataset/signnames.csv"
+    with open(signname_file) as f:
+        f.readline() # skip the headers
+        signnames = [row[1] for row in csv.reader(f)]
+    return signnames
 
 print("image and label load")
 
@@ -190,11 +196,11 @@ class YOLO2Output(HybridBlock):
     def hybrid_forward(self, F, x, *args):
         return self.output(x)
 
-print("model done")
+print("model ok")
 
 sce_loss = gluon.loss.SoftmaxCrossEntropyLoss(from_logits=False)
 l1_loss = gluon.loss.L1Loss()
-from mxnet import metric
+
 
 class LossRecorder(mx.metric.EvalMetric):
     """LossRecorder is used to record raw loss so we can observe loss directly
@@ -280,8 +286,15 @@ for epoch in range(START_EPOCH, START_EPOCH+EPOCHS):
         obj_loss.update(loss2)
         box_loss.update(loss3)
 
-    print('%2d: %s %.5f, %s %.4f, %s %.4f time:%.1f s' % (
-        epoch, *cls_loss.get(), *obj_loss.get(), *box_loss.get(), time.time()-tic))
+    print('%2d: %s %.5f, %s %.4f, %s %.4f time:%.1f s' % (epoch, *cls_loss.get(), *obj_loss.get(), *box_loss.get(), time.time()-tic))
     
 net.save_params('params/yolo2_%d.params' % (START_EPOCH + EPOCHS))
 print("save model")
+
+if __name__ == "__main__":
+    load_data()
+    load_label()
+    load_signname()
+    print("image and label load")
+    print("model done")
+    print("save model")
